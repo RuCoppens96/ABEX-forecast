@@ -1,0 +1,6 @@
+{
+    "data_path_CPI": "../data/CPI.csv",
+    "data_path_CPI_archive": "../data/CPI_archive.csv",
+    "data_path_ABEX": "../data/ABEX.csv",
+    "start_date": "01-01-2010"
+}
