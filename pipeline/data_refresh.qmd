@@ -1,0 +1,92 @@
+---
+title: "Data Refresh"
+format:
+  html:
+    code-fold: false
+---
+
+## Set-up
+
+```{r}
+#| label: load-libraries
+#| warning: false
+# Load all libraries
+library(dplyr)
+library(jsonlite)
+library(readr)
+library(plotly)
+library(tidyr)
+library(stringr)
+library(httr)
+library(rvest)
+library(lubridate)
+source("../pipeline/helper.R")
+```
+
+```{r}
+#| label: load metadata
+# Load metadata
+meta_json <- read_json(path = "../settings/settings.json")
+
+data_path_CPI <- meta_json$data_path_CPI
+data_path_CPI_archive <- meta_json$data_path_CPI_archive
+data_path_ABEX <- meta_json$data_path_ABEX
+start_date <- dmy(meta_json$start_date)
+```
+
+## Refresh data
+### ABEX
+```{r}
+#| label: refresh ABEX data
+# Get data
+df_abex_raw <- get_abex()
+
+# Apply filter
+df_abex <- df_abex_raw %>% 
+  filter(Date >= start_date)
+
+# Store result
+df_abex %>% write_csv2(data_path_ABEX)
+```
+
+```{r}
+#| label: plot new ABEX
+# Plot new ABEX
+p <- plot_ly(df_abex, x = ~Date, y = ~ABEX, type = "scatter", mode = "lines") %>%
+        layout(title = 'Evolution ABEX')
+p
+```
+
+### CPI
+```{r}
+#| label: refresh CPI data
+
+# Get CPI archive
+df_cpi_old <- read_csv2(data_path_CPI_archive, col_types = readr::cols(
+    Date = readr::col_date(format = '%d/%m/%Y'),
+    Consumptieprijsindex = readr::col_double(),
+    Gezondheidsindex = readr::col_double()
+))
+
+# Get new CPI data
+df_cpi_new <- get_cpi_last_13_months()
+
+# Apply filter
+df_cpi <- df_cpi_old %>% 
+  bind_rows(df_cpi_new) %>%
+  filter(Date >= start_date) %>%
+  group_by(Date) %>%
+  filter(row_number() == n()) %>%
+  ungroup()
+
+# Store result
+df_cpi %>% write_csv2(data_path_CPI)
+```
+
+```{r}
+#| label: plot new CPI
+# Plot new CPI
+p <- plot_ly(df_cpi, x = ~Date, y = ~Consumptieprijsindex, type = "scatter", mode = "lines") %>%
+        layout(title = 'Evolution CPI')
+p
+```
