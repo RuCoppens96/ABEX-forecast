@@ -1,0 +1,30 @@
+FROM rocker/tidyverse:latest
+
+# Setting the Python version
+ARG PYTHON_VER=3.10
+ENV PYTHON_VER=$PYTHON_VER
+ARG VENV_NAME="r-env"
+ENV VENV_NAME=$VENV_NAME
+
+# CRAN Mirror
+ARG CRAN_MIRROR=https://cran.rstudio.com/
+ENV CRAN_MIRROR=$CRAN_MIRROR
+
+# Create a directory for packages builds
+RUN mkdir pkgs
+COPY setting_files/*.sh setting_files/requirements.txt pkgs/
+
+# Install Debian dependencies
+RUN bash pkgs/install_debian.sh
+
+# Install Python
+RUN bash pkgs/install_python.sh $VENV_NAME
+
+# Install R packages
+COPY setting_files/*.R setting_files/*.json pkgs/
+RUN Rscript pkgs/install_packages.R
+RUN rm pkgs/*.*
+
+
+COPY setting_files/.Rprofile root/
+RUN echo "alias r='radian --profile=~/.Rprofile'" >> ~/.bashrc
